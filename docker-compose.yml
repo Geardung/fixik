@@ -1,0 +1,62 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+      - adminer
+
+  backend:
+    build: ./backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-ae}:${POSTGRES_PASSWORD:-ae}@db:5432/${POSTGRES_DB:-ae}
+      POSTGRES_USER: ${POSTGRES_USER:-ae}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ae}
+      POSTGRES_DB: ${POSTGRES_DB:-ae}
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build: ./frontend
+    restart: unless-stopped
+
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-ae}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-ae}
+      POSTGRES_DB: ${POSTGRES_DB:-ae}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-ae} -d ${POSTGRES_DB:-ae}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  adminer:
+    image: adminer:4
+    restart: unless-stopped
+    depends_on:
+      - db
+
+volumes:
+  pgdata:
+  caddy_data:
+  caddy_config:
