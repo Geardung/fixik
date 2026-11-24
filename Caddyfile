@@ -1,0 +1,23 @@
+{
+	admin off
+}
+
+ae.tedeshi.ru {
+	# локально: самоподписанный внутренний CA (hosts → 127.0.0.1)
+	# на проде убрать tls internal — Caddy сам возьмёт Let's Encrypt
+	tls internal
+
+	@api path /api/*
+	handle @api {
+		reverse_proxy backend:8000
+	}
+
+	handle {
+		reverse_proxy frontend:80
+	}
+}
+
+adminer.ae.tedeshi.ru {
+	tls internal
+	reverse_proxy adminer:8080
+}
